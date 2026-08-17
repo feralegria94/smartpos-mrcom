@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  /* Paleta neutra zinc (tema oscuro) */
+  --fg: 255 255 255;
+  --ink: 24 24 27;
+  --ink-soft: 39 39 42;
+  --ink-muted: 63 63 70;
+  --moon-50: 250 250 250;
+  --moon-100: 244 244 245;
+  --moon-300: 212 212 216;
+  --moon-400: 161 161 170;
+  --moon-500: 113 113 122;
+  --moon-600: 82 82 91;
+  --moon-700: 63 63 70;
+  --accent: 161 161 170;
+  --accent-soft: 212 212 218;
+}
+
+:root.light {
+  color-scheme: light;
+  --fg: 15 23 42;
+  --ink: 241 245 249;
+  --ink-soft: 255 255 255;
+  --ink-muted: 226 232 240;
+  --accent: 82 82 91;
+  --accent-soft: 113 113 122;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #070b1a;
+  background-image: radial-gradient(
+      1200px 600px at 80% -10%,
+      rgba(99, 102, 241, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(800px 500px at 10% 10%, rgba(34, 211, 238, 0.12), transparent 55%);
+  background-attachment: fixed;
+  color: #e6e9f5;
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root.light body {
+  background-color: #f1f5f9;
+  background-image: none;
+  color: #0f172a;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/5 bg-ink-soft/70 shadow-card backdrop-blur;
+  }
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-ink/60 px-3 py-2 text-sm text-white
+      placeholder:text-white/30 focus:border-moon-500 focus:outline-none focus:ring-2 focus:ring-moon-500/30;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium
+      transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-moon-600 text-white hover:bg-moon-500 shadow-glow;
+  }
+  .btn-ghost {
+    @apply btn border border-white/10 bg-white/5 text-white/80 hover:bg-white/10;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-white/50;
+  }
+}
