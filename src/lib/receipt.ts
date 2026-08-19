@@ -96,7 +96,7 @@ export function renderBoletaHtml(
         `<div style="display:flex;justify-content:space-between;gap:8px;margin:3px 0"><span>${escapeHtml(i.description)} <span style="opacity:.6">x${i.qty}</span></span><span>${fmtCLP(i.price * i.qty)}</span></div>`
     )
     .join("");
-  const total = sale.items.reduce((a, i) => a + i.price * i.qty, 0);
+  const total = sale.total ?? sale.items.reduce((a, i) => a + i.price * i.qty, 0);
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Boleta ${sale.id.slice(0, 8)}</title>
 <style>@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}button{display:none}}.rc{width:340px;margin:18px auto;padding:14px;background:${cfg.bgColor};color:${cfg.textColor};font-family:system-ui,Arial,sans-serif;font-size:${fs}px;font-weight:${fw};border:1px solid ${cfg.borderColor};border-radius:10px}.brand{text-align:center;font-weight:${Math.min(800, fw + 200)};font-size:${fs + 3}px;margin-bottom:2px}.c{text-align:center}.row{display:flex;justify-content:space-between}.tot{font-weight:${Math.min(900, fw + 300)};font-size:${fs + 4}px;margin-top:8px;padding-top:6px;${borderTop}}button{margin-top:14px;width:100%;padding:9px;background:${cfg.borderColor};color:${cfg.bgColor};border:0;border-radius:8px;cursor:pointer}</style></head>

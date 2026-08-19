@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CartItem, cartTotal, formatCLP, normalizeCLP } from "../lib/format";
 import { getSales, getCustomers, addCustomer, addSale, deleteSale, type LocalSale, type LocalCustomer } from "../lib/store";
 import { useAuth } from "../auth/AuthProvider";
@@ -13,18 +13,43 @@ function uid(): string {
 }
 
 export default function Dashboard() {
-  const [client, setClient] = useState("");
   const { tenant } = useAuth();
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+
+  // Borrador persistente del carrito (sobrevive a refrescar la página).
+  const draftKey = tenant?.id ? `smartpos:draft:${tenant.id}` : null;
+  const initialDraft = useMemo(() => {
+    if (!draftKey) return null;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      return d && typeof d === "object" ? (d as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }, [draftKey]);
+
+  const [client, setClient] = useState(
+    typeof initialDraft?.client === "string" ? (initialDraft.client as string) : ""
+  );
+  const [description, setDescription] = useState(
+    typeof initialDraft?.description === "string" ? (initialDraft.description as string) : ""
+  );
+  const [price, setPrice] = useState(
+    typeof initialDraft?.price === "string" ? (initialDraft.price as string) : ""
+  );
+  const [cart, setCart] = useState<CartItem[]>(
+    Array.isArray(initialDraft?.cart) ? (initialDraft.cart as CartItem[]) : []
+  );
   const [recent, setRecent] = useState<LocalSale[]>([]);
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [customers, setCustomers] = useState<LocalCustomer[]>([]);
 
   // Ghost-client: solo crear fila de cliente si el usuario lo marca.
-  const [saveCustomer, setSaveCustomer] = useState(false);
+  const [saveCustomer, setSaveCustomer] = useState(
+    typeof initialDraft?.saveCustomer === "boolean" ? (initialDraft.saveCustomer as boolean) : false
+  );
   // Reloj en vivo (portado de Moon POS)
   const [clock, setClock] = useState<Date>(new Date());
 
@@ -45,14 +70,6 @@ export default function Dashboard() {
   }, []);
 
   // ── Persistencia del borrador (sobrevive a refrescar la página) ──
-  const draftKey = tenant?.id ? `smartpos:draft:${tenant.id}` : null;
-  const hasMounted = useRef(false);
-
-  useEffect(() => {
-    if (!draftKey || hasMounted.current) return;
-    hasMounted.current = true;
-  }, [draftKey]);
-
   useEffect(() => {
     if (!draftKey) return;
     try {

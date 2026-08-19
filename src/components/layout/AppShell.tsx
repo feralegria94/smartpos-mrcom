@@ -22,6 +22,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     const l = [...BASE_LINKS];
     if (profile?.role === "owner" || profile?.role === "admin") {
       l.push({ to: "/usuarios", label: "Usuarios", icon: "group" });
+      l.push({ to: "/diagnostico", label: "Diagnóstico", icon: "monitor_heart" });
     }
     return l;
   }, [profile?.role]);

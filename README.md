@@ -73,6 +73,19 @@ Para migraciones incrementales (puerto 5432 bloqueado por firewall):
 | ⏳ F4 | Pasarela de pago recurrente (Transbank/Stripe) — QR Mercado Pago ya activo |
 | ⏳ F5 | Deploy Netlify + subdominio `smartpos.mrcomsoluciones.cl` (Cloudflare) |
 
+## Git: commit + push (workflow rápido)
+
+```bash
+git add -A && git commit -m "..." && git push origin main
+```
+
+- Dev server: `nohup npm run dev > /tmp/smartpos-dev.log 2>&1 &` (desde `~/smartpos`, puerto 5173).
+- Credenciales: `git credential.helper=store` → `~/.git-credentials` tiene `feralegria94:TOKEN@github.com` (token válido, verificado 200 vía API).
+- ⚠️ Si `push` falla con `could not read Password`, es porque el remote tiene un token/username embebido en la URL y rompe el match del credential store. **Fix (una línea):**
+  ```bash
+  git remote set-url origin https://github.com/feralegria94/smartpos-mrcom.git
+  ```
+
 ## Deploy (Netlify) — ⚠️ REGLA CRÍTICA
 
 > **NUNCA ejecutar `netlify deploy` sin confirmar EXPLÍCITAMENTE el SITE_ID destino.**

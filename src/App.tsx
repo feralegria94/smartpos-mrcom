@@ -11,6 +11,7 @@ import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Users from "./pages/Users";
+import Health from "./pages/Health";
 
 export default function App() {
   const { user, profile, loading } = useAuth();
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/reportes" element={<Reports />} />
         <Route path="/ajustes" element={<Settings />} />
         <Route path="/usuarios" element={<Users />} />
+        <Route path="/diagnostico" element={<Health />} />
         {/* /login se mantiene accesible con sesión activa para que el guard
             de sesión única en Login.tsx pueda resolver (modal "tomar el control")
             sin ser redirigido al dashboard antes de tiempo. */}
