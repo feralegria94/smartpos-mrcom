@@ -1,9 +1,9 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import Extras from "../Extras";
 
-const LINKS = [
+const BASE_LINKS = [
   { to: "/", label: "Caja", icon: "point_of_sale" },
   { to: "/productos", label: "Productos", icon: "inventory_2" },
   { to: "/clientes", label: "Clientes", icon: "groups" },
@@ -15,6 +15,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { tenant, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [light, setLight] = useState(() => document.documentElement.classList.contains("light"));
+
+  // Gestión de usuarios: solo owner y admin.
+  const links = useMemo(() => {
+    const l = [...BASE_LINKS];
+    if (profile?.role === "owner" || profile?.role === "admin") {
+      l.push({ to: "/usuarios", label: "Usuarios", icon: "group" });
+    }
+    return l;
+  }, [profile?.role]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("light", light);
@@ -41,7 +50,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
@@ -88,7 +97,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* Navegación inferior (móvil/tablet) */}
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/10 bg-ink-soft/95 backdrop-blur md:hidden">
-        {LINKS.map((l) => (
+        {links.map((l) => (
           <NavLink
             key={l.to}
             to={l.to}

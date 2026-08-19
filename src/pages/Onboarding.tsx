@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
+import { setConfig } from "../lib/store";
 import type { Plan } from "../types";
 
 const PLANS: { id: Plan; name: string; price: string; features: string[] }[] = [
@@ -11,7 +11,7 @@ const PLANS: { id: Plan; name: string; price: string; features: string[] }[] = [
 ];
 
 export default function Onboarding() {
-  const { refresh } = useAuth();
+  const { tenant, refresh } = useAuth();
   const navigate = useNavigate();
   const [businessName, setBusinessName] = useState("");
   const [rut, setRut] = useState("");
@@ -22,16 +22,16 @@ export default function Onboarding() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!tenant) {
+      setError("Sesión no disponible. Vuelve a iniciar sesión.");
+      return;
+    }
     setBusy(true);
     setError("");
-    const { error } = await supabase.rpc("complete_onboarding", {
-      p_name: businessName,
-      p_rut: rut,
-      p_address: address,
-      p_plan: plan,
-    });
+    // Modo offline (Moon style): la config del negocio vive en localStorage
+    // por tenant, no en Supabase. Mismo patrón que Settings.tsx.
+    setConfig(tenant.id, { name: businessName, rut, address, plan });
     setBusy(false);
-    if (error) return setError(error.message);
     await refresh();
     navigate("/");
   }

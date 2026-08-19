@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "../auth/AuthProvider";
 import {
   getConfig,
@@ -37,6 +38,8 @@ export default function Settings() {
   const [designOpen, setDesignOpen] = useState(false);
   const [busyBkp, setBusyBkp] = useState(false);
   const [rcfg, setRcfg] = useState<ReceiptConfig>(() => loadReceiptConfig(tenant?.id));
+  // Panel de pago con QR (acordeón, sin recargar la página).
+  const [showQr, setShowQr] = useState(false);
 
   function save(e: React.FormEvent) {
     e.preventDefault();
@@ -182,8 +185,42 @@ export default function Settings() {
           ))}
         </div>
         <p className="mt-3 text-xs text-white/40">
-          La pasarela de pago (Transbank/Stripe) se integra en la siguiente fase para cobro automático.
+          El pago se realiza por Mercado Pago (manual). La pasarela automática (Transbank/Stripe) se
+          integra en la siguiente fase para cobro automático.
         </p>
+
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setShowQr(!showQr)}
+            aria-expanded={showQr}
+          >
+            <span className="material-symbols-rounded align-middle text-base">qr_code</span>
+            {showQr ? "Ocultar pago" : "Pagar con Mercado Pago"}
+          </button>
+
+          {showQr && (
+            <div className="mt-4">
+              <h4 className="mb-1 font-semibold text-white">Suscríbete / Pagar</h4>
+              <p className="mb-4 text-sm text-white/60">
+                Escanea el QR con tu celular y paga con Mercado Pago. Tu plan se activa al confirmar
+                el pago.
+              </p>
+              <div className="inline-block rounded-xl bg-white p-4 shadow-glow">
+                <QRCodeSVG
+                  value="https://link.mercadopago.cl/mrcomspa"
+                  size={140}
+                  bgColor="#ffffff"
+                  fgColor="#0f172a"
+                />
+              </div>
+              <p className="mt-3 text-xs text-white/40">
+                El pago se acredita a tu suscripción actual{plan ? ` (${PLAN_LABEL[plan].split(" — ")[0]})` : ""}.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="card p-5">

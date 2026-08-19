@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthProvider";
 import AppShell from "./components/layout/AppShell";
 import Login from "./auth/Login";
+import Register from "./auth/Register";
 import Onboarding from "./pages/Onboarding";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
@@ -9,6 +10,7 @@ import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Users from "./pages/Users";
 
 export default function App() {
   const { user, profile, loading } = useAuth();
@@ -26,6 +28,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -49,6 +52,11 @@ export default function App() {
         <Route path="/clientes" element={<Customers />} />
         <Route path="/reportes" element={<Reports />} />
         <Route path="/ajustes" element={<Settings />} />
+        <Route path="/usuarios" element={<Users />} />
+        {/* /login se mantiene accesible con sesión activa para que el guard
+            de sesión única en Login.tsx pueda resolver (modal "tomar el control")
+            sin ser redirigido al dashboard antes de tiempo. */}
+        <Route path="/login" element={<Login />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

@@ -49,6 +49,18 @@ npm run dev                 # http://localhost:5173
 
 Pegar `supabase/schema.sql` en el **SQL Editor** del dashboard de Supabase (proyecto `qtjcgbcqdhaubmdhqgxe`) y ejecutar. Crea tablas, RLS y el trigger de registro.
 
+Para migraciones incrementales (puerto 5432 bloqueado por firewall):
+```bash
+/home/mrcom/smartpos/supabase/apply_migration.sh   # lee PAT de ~/.config/mrcom/supabase-pat.key
+```
+
+## Seguridad y staff (2026-08-18)
+
+- **1 sesión activa por cuenta** (`active_sessions`): el login registra la IP pública del cliente (`session_register`). Si la cuenta ya está activa desde otra IP → bloqueo con opción "Tomar el control" (`p_force=true`). Logout limpia la sesión (`session_unregister`).
+- **Dashboard Usuarios** (`/usuarios`, solo owner/admin): lista staff del tenant, invita por email (`staff_invite` → link `/register?invite=TOKEN`, expira en 7 días), cambia rol (`staff_update_role`, solo owner), revoca acceso (`staff_remove`, solo owner, protege último owner).
+- **Roles**: `owner` (todo) / `admin` (invita, sin cambiar roles) / `cashier` (solo POS). RLS endurecida: `profiles_manage*` permite escribir perfiles solo a owner/admin.
+- **Pago suscripciones (fase QR)**: cada plan muestra un QR que apunta a `https://link.mercadopago.cl/mrcomspa` (qrcode.react en Settings). La pasarela recurrente (Transbank/Stripe) queda para fase posterior.
+
 ## Roadmap MVP
 
 | Fase | Alcance |
@@ -57,9 +69,9 @@ Pegar `supabase/schema.sql` en el **SQL Editor** del dashboard de Supabase (proy
 | ⏳ F1 | Caja POS funcional (carrito, boleta, historial) — hecho base |
 | ⏳ F2 | Productos / Clientes CRUD |
 | ⏳ F3 | Reportes y export CSV/boletas |
-| ⏳ F4 | Pasarela de pago (Transbank/Stripe) para cobro de planes |
+| ✅ F6a | Roles staff (owner/admin/cajero), invitaciones, revocar acceso |
+| ⏳ F4 | Pasarela de pago recurrente (Transbank/Stripe) — QR Mercado Pago ya activo |
 | ⏳ F5 | Deploy Netlify + subdominio `smartpos.mrcomsoluciones.cl` (Cloudflare) |
-| ⏳ F6 | Roles staff (admin/cajero), multi-caja, multi-sucursal |
 
 ## Deploy (Netlify) — ⚠️ REGLA CRÍTICA
 

@@ -60,6 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    // Fire and forget: informa al backend que la sesión se cierra.
+    // Nunca bloquea el cierre aunque el RPC falle (offline-first).
+    try {
+      await supabase.rpc("session_unregister");
+    } catch {
+      /* ignore */
+    }
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
