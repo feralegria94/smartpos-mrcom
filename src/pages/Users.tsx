@@ -83,8 +83,37 @@ export default function Users() {
   const [invRole, setInvRole] = useState<Role>("cashier");
   const [inviteLink, setInviteLink] = useState("");
 
+  // Edición de nombre
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
+
   function tenantPlan(): Plan {
     return (tenant?.plan ?? "basico") as Plan;
+  }
+
+  function startEditName(member: StaffMember) {
+    setEditingId(member.id);
+    setNameDraft(member.full_name ?? "");
+  }
+
+  async function saveName(member: StaffMember) {
+    const n = nameDraft.trim();
+    if (!n) return;
+    setBusy(true);
+    setMsg("");
+    setError("");
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name: n })
+      .eq("id", member.id);
+    if (error) {
+      setError(error.message);
+    } else {
+      setMsg("Nombre actualizado ✓");
+      setEditingId(null);
+      await load();
+    }
+    setBusy(false);
   }
 
   const load = useCallback(async () => {
@@ -281,14 +310,51 @@ export default function Users() {
             return (
               <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-white">
-                    {m.full_name ?? "Sin nombre"}
-                    {isSelf && <span className="ml-2 text-xs text-white/40">(tú)</span>}
-                  </p>
+                  {editingId === m.id ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        className="input w-56 py-1.5 text-sm"
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveName(m);
+                          if (e.key === "Escape") setEditingId(null);
+                        }}
+                        autoFocus
+                      />
+                      <button
+                        className="rounded-xl bg-accent px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        onClick={() => saveName(m)}
+                        disabled={busy}
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        className="rounded-xl border border-white/10 px-2.5 py-1.5 text-xs text-white/60 hover:text-white"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="truncate text-sm font-medium text-white">
+                      {m.full_name ?? "Sin nombre"}
+                      {isSelf && <span className="ml-2 text-xs text-white/40">(tú)</span>}
+                    </p>
+                  )}
                   <p className="truncate text-xs text-white/40">{m.email}</p>
                   <p className="mt-1 text-xs text-white/30">Alta: {fmtDate(m.created_at)}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {(isOwner || profile?.role === "admin") && editingId !== m.id && (
+                    <button
+                      className="rounded-xl border border-white/10 px-2.5 py-1.5 text-xs text-white/60 transition hover:bg-white/5 hover:text-white"
+                      onClick={() => startEditName(m)}
+                      title="Cambiar nombre"
+                    >
+                      <span className="material-symbols-rounded align-middle text-base">edit</span> Nombre
+                    </button>
+                  )}
                   <span className={`rounded-full px-2.5 py-0.5 text-xs ${roleBadge(m.role)}`}>
                     {ROLE_LABEL[m.role]}
                   </span>
