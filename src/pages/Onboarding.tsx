@@ -5,9 +5,9 @@ import { setConfig } from "../lib/store";
 import type { Plan } from "../types";
 
 const PLANS: { id: Plan; name: string; price: string; features: string[] }[] = [
-  { id: "basico", name: "Básico", price: "$9.990/mes", features: ["50 productos", "200 boletas/mes", "1 caja"] },
-  { id: "pro", name: "Pro", price: "$24.990/mes", features: ["500 productos", "5.000 boletas/mes", "Cajas ilimitadas", "Reportes avanzados"] },
-  { id: "empresa", name: "Empresa", price: "$59.990/mes", features: ["Productos ilimitados", "Boletas ilimitadas", "Multi-sucursal", "Soporte prioritario"] },
+  { id: "basico", name: "Básico", price: "$14.990/mes", features: ["50 productos", "200 boletas/mes", "2 usuarios"] },
+  { id: "pro", name: "Pro", price: "$29.990/mes", features: ["500 productos", "5.000 boletas/mes", "3 usuarios", "Reportes avanzados"] },
+  { id: "empresa", name: "Empresa", price: "$49.990/mes", features: ["Productos ilimitados", "Boletas ilimitadas", "Usuarios ilimitados", "Multi-sucursal", "Soporte prioritario"] },
 ];
 
 export default function Onboarding() {

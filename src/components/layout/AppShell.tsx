@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
+import { isSubscriptionActive, PLAN_NAMES } from "../../lib/limits";
 import Extras from "../Extras";
 
 const BASE_LINKS = [
@@ -92,6 +93,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <div className="mb-4 flex justify-end">
           <Extras />
         </div>
+        {!isSubscriptionActive(tenant) && (
+          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            Tu suscripción al plan {PLAN_NAMES[tenant?.plan ?? "basico"]} está vencida o cancelada.{" "}
+            <button onClick={() => navigate("/ajustes")} className="font-semibold text-red-200 underline">
+              Renovar ahora
+            </button>
+          </div>
+        )}
         {children}
       </main>
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CartItem, cartTotal, formatCLP, normalizeCLP } from "../lib/format";
 import { getSales, getCustomers, addCustomer, addSale, deleteSale, type LocalSale, type LocalCustomer } from "../lib/store";
 import { useAuth } from "../auth/AuthProvider";
+import { canAddSale, countSalesThisMonth, getPlanLimits, isUnlimited, PLAN_NAMES } from "../lib/limits";
 
 // Generador de ID seguro también en contextos no seguros (HTTP/LAN, donde
 // crypto.randomUUID no está disponible).
@@ -106,6 +107,13 @@ export default function Dashboard() {
 
   async function checkout() {
     if (!cart.length || busy) return;
+    const saleCheck = canAddSale(tenant?.id ?? "", tenant?.plan);
+    if (!saleCheck.ok) {
+      setMsg(
+        `Límite del plan ${PLAN_NAMES[tenant?.plan ?? "basico"]}: máximo ${saleCheck.limit} boletas/mes. Mejora tu plan.`
+      );
+      return;
+    }
     setBusy(true);
     setMsg("");
     try {
@@ -131,6 +139,14 @@ export default function Dashboard() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-semibold text-white">Nueva venta</h2>
               <span className="text-sm tabular-nums text-white/60">{clock.toLocaleTimeString("es-CL")}</span>
+            </div>
+            <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/60">
+              Plan <span className="font-semibold text-white">{PLAN_NAMES[tenant?.plan ?? "basico"]}</span> —{" "}
+              {countSalesThisMonth(tenant?.id ?? "")} /{" "}
+              {isUnlimited(getPlanLimits(tenant?.plan).maxSalesPerMonth)
+                ? "∞"
+                : getPlanLimits(tenant?.plan).maxSalesPerMonth}{" "}
+              boletas este mes
             </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>

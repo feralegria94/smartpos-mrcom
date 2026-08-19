@@ -15,9 +15,9 @@ import { loadReceiptConfig, saveReceiptConfig, type ReceiptConfig } from "../lib
 import type { Plan } from "../types";
 
 const PLAN_LABEL: Record<Plan, string> = {
-  basico: "Básico — $9.990/mes",
-  pro: "Pro — $24.990/mes",
-  empresa: "Empresa — $59.990/mes",
+  basico: "Básico — $14.990/mes",
+  pro: "Pro — $29.990/mes",
+  empresa: "Empresa — $49.990/mes",
 };
 
 export default function Settings() {

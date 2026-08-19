@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { formatCLP, normalizeCLP } from "../lib/format";
 import { getProducts, addProduct, setProductActive, type LocalProduct } from "../lib/store";
 import { useAuth } from "../auth/AuthProvider";
+import { canAddProduct, countProducts, getPlanLimits, isUnlimited, PLAN_NAMES } from "../lib/limits";
 
 export default function Products() {
   const [items, setItems] = useState<LocalProduct[]>([]);
@@ -9,6 +10,7 @@ export default function Products() {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
   const [busy, setBusy] = useState(false);
+  const [limitMsg, setLimitMsg] = useState("");
   const { tenant } = useAuth();
 
   function load() {
@@ -22,6 +24,12 @@ export default function Products() {
     e.preventDefault();
     const p = normalizeCLP(price);
     if (!name.trim() || p <= 0) return;
+    const check = canAddProduct(tenant?.id ?? "", tenant?.plan);
+    if (!check.ok) {
+      setLimitMsg(`Límite del plan ${PLAN_NAMES[tenant?.plan ?? "basico"]}: máximo ${check.limit} productos activos.`);
+      return;
+    }
+    setLimitMsg("");
     setBusy(true);
     addProduct(tenant?.id ?? "", name.trim(), p, category.trim() || null);
     setBusy(false);
@@ -39,6 +47,15 @@ export default function Products() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold text-white">Productos</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white/60">
+        <span>
+          Uso del plan <span className="font-semibold text-white">{PLAN_NAMES[tenant?.plan ?? "basico"]}</span>:{" "}
+          {countProducts(tenant?.id ?? "")} /{" "}
+          {isUnlimited(getPlanLimits(tenant?.plan).maxProducts) ? "∞" : getPlanLimits(tenant?.plan).maxProducts}{" "}
+          productos
+        </span>
+        {limitMsg && <span className="text-red-400">{limitMsg}</span>}
+      </div>
       <form onSubmit={add} className="card mb-6 grid grid-cols-1 gap-3 p-5 md:grid-cols-4">
         <div>
           <label className="label">Nombre</label>

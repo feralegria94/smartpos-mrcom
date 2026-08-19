@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
-import type { Role } from "../types";
+import { canAddStaff, getPlanLimits, isUnlimited, PLAN_NAMES } from "../lib/limits";
+import type { Plan, Role } from "../types";
 
 const ROLES: Role[] = ["owner", "admin", "cashier"];
 
@@ -70,7 +71,7 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 export default function Users() {
-  const { profile } = useAuth();
+  const { profile, tenant } = useAuth();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -81,6 +82,10 @@ export default function Users() {
   const [invEmail, setInvEmail] = useState("");
   const [invRole, setInvRole] = useState<Role>("cashier");
   const [inviteLink, setInviteLink] = useState("");
+
+  function tenantPlan(): Plan {
+    return (tenant?.plan ?? "basico") as Plan;
+  }
 
   const load = useCallback(async () => {
     if (!profile?.tenant_id) return;
@@ -118,6 +123,8 @@ export default function Users() {
 
   const isOwner = profile?.role === "owner";
   const ownersCount = staff.filter((m) => m.role === "owner").length;
+  const staffLimit = getPlanLimits(tenantPlan()).maxStaff;
+  const staffAtLimit = !isUnlimited(staffLimit) && staff.length >= staffLimit;
 
   async function changeRole(member: StaffMember, newRole: Role) {
     if (newRole === member.role) return;
@@ -166,6 +173,13 @@ export default function Users() {
   async function invite(e: React.FormEvent) {
     e.preventDefault();
     if (!invEmail.trim()) return;
+    const staffCheck = canAddStaff(staff.length, tenantPlan());
+    if (!staffCheck.ok) {
+      setError(
+        `Límite del plan ${PLAN_NAMES[tenantPlan() ?? "basico"]}: máximo ${staffCheck.limit} usuarios. Mejora tu plan para invitar más personal.`
+      );
+      return;
+    }
     setBusy(true);
     setMsg("");
     setError("");
@@ -197,6 +211,18 @@ export default function Users() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold text-white">Usuarios</h1>
+
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-white/60">
+        <span>
+          Uso del plan <span className="font-semibold text-white">{PLAN_NAMES[tenantPlan() ?? "basico"]}</span>:{" "}
+          {staff.length} / {isUnlimited(staffLimit) ? "∞" : staffLimit} usuarios
+        </span>
+        {staffAtLimit && (
+          <span className="text-red-400">
+            Límite de usuarios alcanzado. Mejora tu plan para invitar más personal.
+          </span>
+        )}
+      </div>
 
       <form onSubmit={invite} className="card mb-6 grid grid-cols-1 gap-3 p-5 md:grid-cols-[1fr_180px_auto]">
         <div>
