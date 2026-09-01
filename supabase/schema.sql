@@ -770,3 +770,309 @@ create policy staff_invites_tenant on public.staff_invites
   for all
   using (tenant_id = public.current_tenant_id())
   with check (tenant_id = public.current_tenant_id());
+
+
+-- ============================================================================
+--  PLANES, PRECIOS Y PANEL DE ADMINISTRACIÓN SaaS (2026-08-20)
+--  Precios y límites editables desde el dashboard (solo superadmin MR.COM).
+--  Ver migraciones:
+--    supabase/migrations/2026-08-20_04_plans_pricing.sql
+--    supabase/migrations/2026-08-20_05_admin_panel.sql
+-- ============================================================================
+
+create table if not exists public.plans (
+  id                   text primary key check (id in ('basico','pro','empresa')),
+  name                 text not null,
+  price                numeric(12,0) not null default 0 check (price >= 0),
+  max_products         int not null default 0,
+  max_sales_per_month  int not null default 0,
+  max_staff            int not null default 0,
+  updated_at           timestamptz not null default now()
+);
+
+insert into public.plans (id, name, price, max_products, max_sales_per_month, max_staff) values
+  ('basico',  'Básico',  14990, 50,  200,  2),
+  ('pro',     'Pro',     29990, 500, 5000, 3),
+  ('empresa', 'Empresa', 49990, 0,   0,    0)
+on conflict (id) do update set
+  name                 = excluded.name,
+  price                = excluded.price,
+  max_products         = excluded.max_products,
+  max_sales_per_month  = excluded.max_sales_per_month,
+  max_staff            = excluded.max_staff;
+
+create table if not exists public.platform_admins (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table public.plans           enable row level security;
+alter table public.platform_admins enable row level security;
+
+drop policy if exists plans_read on public.plans;
+create policy plans_read on public.plans
+  for select using (true);
+
+-- ¿El usuario autenticado es administrador de plataforma?
+create or replace function public.is_platform_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.platform_admins pa
+    where pa.user_id = auth.uid()
+  );
+$$;
+
+-- Bootstrap: el PRIMER dueño (owner) que lo invoque se vuelve superadmin.
+create or replace function public.bootstrap_platform_admin()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_count int;
+  v_role  text;
+begin
+  if auth.uid() is null then
+    return jsonb_build_object('ok', false, 'message', 'No autenticado');
+  end if;
+
+  select count(*) into v_count from public.platform_admins;
+  if v_count > 0 then
+    return jsonb_build_object('ok', false, 'message', 'Ya existe un administrador de plataforma');
+  end if;
+
+  select role into v_role from public.profiles where id = auth.uid();
+  if v_role is distinct from 'owner' then
+    return jsonb_build_object('ok', false, 'message', 'Solo un dueño (owner) puede activarse como administrador');
+  end if;
+
+  insert into public.platform_admins (user_id) values (auth.uid());
+  return jsonb_build_object('ok', true, 'message', 'Acceso administrador activado');
+end;
+$$;
+
+-- Lectura pública de planes (precio + límites).
+create or replace function public.get_plans()
+returns table (
+  id                  text,
+  name                text,
+  price               numeric,
+  max_products        int,
+  max_sales_per_month int,
+  max_staff           int
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select p.id, p.name, p.price, p.max_products, p.max_sales_per_month, p.max_staff
+  from public.plans p
+  order by case p.id when 'basico' then 1 when 'pro' then 2 else 3 end;
+$$;
+
+-- Edición de plan (precio + nombre + límites), solo superadmin.
+create or replace function public.admin_update_plan(
+  p_plan                text,
+  p_price               numeric default null,
+  p_name                text default null,
+  p_max_products        int default null,
+  p_max_sales_per_month int default null,
+  p_max_staff           int default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    return jsonb_build_object('ok', false, 'message', 'No autorizado: solo administrador de plataforma');
+  end if;
+
+  if p_plan not in ('basico','pro','empresa') then
+    return jsonb_build_object('ok', false, 'message', 'Plan inválido');
+  end if;
+
+  if p_price is not null and p_price < 0 then
+    return jsonb_build_object('ok', false, 'message', 'El precio no puede ser negativo');
+  end if;
+  if p_max_products is not null and p_max_products < 0 then
+    return jsonb_build_object('ok', false, 'message', 'El límite de productos no puede ser negativo');
+  end if;
+  if p_max_sales_per_month is not null and p_max_sales_per_month < 0 then
+    return jsonb_build_object('ok', false, 'message', 'El límite de boletas no puede ser negativo');
+  end if;
+  if p_max_staff is not null and p_max_staff < 0 then
+    return jsonb_build_object('ok', false, 'message', 'El límite de usuarios no puede ser negativo');
+  end if;
+
+  update public.plans
+  set
+    name                = coalesce(p_name, name),
+    price               = coalesce(p_price, price),
+    max_products        = coalesce(p_max_products, max_products),
+    max_sales_per_month = coalesce(p_max_sales_per_month, max_sales_per_month),
+    max_staff           = coalesce(p_max_staff, max_staff),
+    updated_at          = now()
+  where id = p_plan;
+
+  return jsonb_build_object('ok', true, 'message', 'Plan actualizado');
+end;
+$$;
+
+-- Límites por plan leyendo de public.plans (fuente de verdad central).
+create or replace function public.plan_limits(p_plan text)
+returns table (max_products int, max_sales_per_month int)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    case when p.max_products = 0 then 2147483647 else p.max_products end,
+    case when p.max_sales_per_month = 0 then 2147483647 else p.max_sales_per_month end
+  from public.plans p
+  where p.id = p_plan
+  union all
+  select 2147483647, 2147483647
+  where not exists (select 1 from public.plans where id = p_plan)
+  limit 1;
+$$;
+
+-- Métricas globales del SaaS (solo superadmin).
+create or replace function public.admin_stats()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+stable
+as $$
+declare
+  v_total     int;
+  v_active    int;
+  v_past_due  int;
+  v_canceled  int;
+  v_trialing  int;
+  v_basico    int;
+  v_pro       int;
+  v_empresa   int;
+  v_staff     int;
+begin
+  if not public.is_platform_admin() then
+    return jsonb_build_object('ok', false, 'message', 'No autorizado');
+  end if;
+
+  select count(*) into v_total    from public.tenants;
+  select count(*) into v_active   from public.tenants where subscription_status = 'active';
+  select count(*) into v_past_due from public.tenants where subscription_status = 'past_due';
+  select count(*) into v_canceled from public.tenants where subscription_status = 'canceled';
+  select count(*) into v_trialing from public.tenants where subscription_status = 'trialing';
+  select count(*) into v_basico   from public.tenants where plan = 'basico';
+  select count(*) into v_pro      from public.tenants where plan = 'pro';
+  select count(*) into v_empresa  from public.tenants where plan = 'empresa';
+  select count(*) into v_staff    from public.profiles;
+
+  return jsonb_build_object(
+    'ok', true,
+    'total_tenants',    v_total,
+    'active_tenants',   v_active,
+    'past_due_tenants', v_past_due,
+    'canceled_tenants', v_canceled,
+    'trialing_tenants', v_trialing,
+    'tenants_by_plan',  jsonb_build_object('basico', v_basico, 'pro', v_pro, 'empresa', v_empresa),
+    'total_staff',      v_staff
+  );
+end;
+$$;
+
+-- Listado de negocios con métricas por tenant (solo superadmin).
+create or replace function public.admin_list_tenants()
+returns table (
+  id                    uuid,
+  name                  text,
+  plan                  text,
+  subscription_status   text,
+  subscription_ends_at  timestamptz,
+  created_at            timestamptz,
+  staff_count           bigint,
+  owner_email           text
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    t.id,
+    t.name,
+    t.plan,
+    t.subscription_status,
+    t.subscription_ends_at,
+    t.created_at,
+    (select count(*) from public.profiles pr where pr.tenant_id = t.id) as staff_count,
+    (select pr.email from public.profiles pr
+      where pr.tenant_id = t.id and pr.role = 'owner'
+      order by pr.created_at limit 1) as owner_email
+  from public.tenants t
+  order by t.created_at desc;
+$$;
+
+-- Edición de un negocio: plan / estado de suscripción (solo superadmin).
+create or replace function public.admin_update_tenant(
+  p_tenant_id           uuid,
+  p_plan                text default null,
+  p_subscription_status text default null,
+  p_subscription_ends_at timestamptz default null,
+  p_clear_ends_at       boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_platform_admin() then
+    return jsonb_build_object('ok', false, 'message', 'No autorizado');
+  end if;
+
+  if p_plan is not null and p_plan not in ('basico','pro','empresa') then
+    return jsonb_build_object('ok', false, 'message', 'Plan inválido');
+  end if;
+  if p_subscription_status is not null and p_subscription_status not in ('active','past_due','canceled','trialing') then
+    return jsonb_build_object('ok', false, 'message', 'Estado de suscripción inválido');
+  end if;
+
+  update public.tenants
+  set
+    plan                  = coalesce(p_plan, plan),
+    subscription_status   = coalesce(p_subscription_status, subscription_status),
+    subscription_ends_at  = case
+      when p_clear_ends_at then null
+      when p_subscription_ends_at is not null then p_subscription_ends_at
+      else subscription_ends_at
+    end
+  where id = p_tenant_id;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'message', 'Negocio no encontrado');
+  end if;
+
+  return jsonb_build_object('ok', true, 'message', 'Negocio actualizado');
+end;
+$$;
+
+grant execute on function public.is_platform_admin()        to anon, authenticated;
+grant execute on function public.bootstrap_platform_admin() to authenticated;
+grant execute on function public.get_plans()                to anon, authenticated;
+grant execute on function public.admin_update_plan(text, numeric, text, int, int, int) to authenticated;
+grant execute on function public.admin_stats()              to authenticated;
+grant execute on function public.admin_list_tenants()       to authenticated;
+grant execute on function public.admin_update_tenant(uuid, text, text, timestamptz, boolean) to authenticated;

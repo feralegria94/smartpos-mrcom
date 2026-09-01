@@ -1,10 +1,12 @@
 // Límites por plan (enforcement offline-first).
-// Fuente de verdad: supabase/schema.sql → public.plan_limits(p_plan)
+// Fuente de verdad: public.plans (Supabase) → sincronizado a localStorage vía
+// syncPlanLimits(); el fallback local garantiza funcionamiento offline.
 // El POS opera 100% offline (localStorage); el enforcement se hace en el
 // frontend contando datos locales, más el estado de suscripción del tenant.
 
 import type { Plan, Tenant } from "../types";
 import { getProducts, getSales } from "./store";
+import { getPlans } from "./plans";
 
 export interface PlanLimits {
   maxProducts: number; // 0 = ilimitado
@@ -12,11 +14,13 @@ export interface PlanLimits {
   maxStaff: number; // 0 = ilimitado
 }
 
-const LIMITS: Record<Plan, PlanLimits> = {
+const DEFAULT_LIMITS: Record<Plan, PlanLimits> = {
   basico: { maxProducts: 50, maxSalesPerMonth: 200, maxStaff: 2 },
   pro: { maxProducts: 500, maxSalesPerMonth: 5000, maxStaff: 3 },
   empresa: { maxProducts: 0, maxSalesPerMonth: 0, maxStaff: 0 },
 };
+
+const CACHE_KEY = "smartpos:plan_limits";
 
 export const PLAN_NAMES: Record<Plan, string> = {
   basico: "Básico",
@@ -24,10 +28,41 @@ export const PLAN_NAMES: Record<Plan, string> = {
   empresa: "Empresa",
 };
 
+function readCache(): Record<Plan, PlanLimits> | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Partial<Record<Plan, PlanLimits>>;
+    if (!d?.basico || !d?.pro || !d?.empresa) return null;
+    return d as Record<Plan, PlanLimits>;
+  } catch {
+    return null;
+  }
+}
+
+/** Sincroniza límites desde public.plans a localStorage (se llama al iniciar la app). */
+export async function syncPlanLimits(): Promise<void> {
+  try {
+    const plans = await getPlans();
+    const map: Record<Plan, PlanLimits> = {
+      basico: { ...DEFAULT_LIMITS.basico },
+      pro: { ...DEFAULT_LIMITS.pro },
+      empresa: { ...DEFAULT_LIMITS.empresa },
+    };
+    for (const p of plans) {
+      map[p.id] = { maxProducts: p.maxProducts, maxSalesPerMonth: p.maxSalesPerMonth, maxStaff: p.maxStaff };
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(map));
+  } catch {
+    /* sin almacenamiento / sin red: mantener fallback */
+  }
+}
+
 export function getPlanLimits(plan?: string | null): PlanLimits {
-  if (plan === "pro") return LIMITS.pro;
-  if (plan === "empresa") return LIMITS.empresa;
-  return LIMITS.basico;
+  const src = readCache() ?? DEFAULT_LIMITS;
+  if (plan === "pro") return src.pro;
+  if (plan === "empresa") return src.empresa;
+  return src.basico;
 }
 
 export function isUnlimited(n: number): boolean {

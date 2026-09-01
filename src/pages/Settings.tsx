@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "../auth/AuthProvider";
 import {
@@ -12,9 +12,10 @@ import {
   addSale,
 } from "../lib/store";
 import { loadReceiptConfig, saveReceiptConfig, type ReceiptConfig } from "../lib/receipt";
+import { formatPlanPrice, getPlans } from "../lib/plans";
 import type { Plan } from "../types";
 
-const PLAN_LABEL: Record<Plan, string> = {
+const FALLBACK_PLAN_LABEL: Record<Plan, string> = {
   basico: "Básico — $14.990/mes",
   pro: "Pro — $29.990/mes",
   empresa: "Empresa — $49.990/mes",
@@ -32,6 +33,18 @@ export default function Settings() {
     (cfg.plan as Plan | undefined) ?? tenant?.plan
   );
   const [busy, setBusy] = useState(false);
+  const [ipInfo, setIpInfo] = useState("");
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const d = await res.json();
+        if (on) setIpInfo(d.ip || "");
+      } catch { if (on) setIpInfo("indisponible"); }
+    })();
+    return () => { on = false; };
+  }, []);
   const [msg, setMsg] = useState("");
   const restoreRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +53,18 @@ export default function Settings() {
   const [rcfg, setRcfg] = useState<ReceiptConfig>(() => loadReceiptConfig(tenant?.id));
   // Panel de pago con QR (acordeón, sin recargar la página).
   const [showQr, setShowQr] = useState(false);
+  // Precios centrales (public.plans), con fallback local.
+  const [planLabel, setPlanLabel] = useState<Record<Plan, string>>(FALLBACK_PLAN_LABEL);
+
+  useEffect(() => {
+    getPlans().then((plans) => {
+      const map: Record<Plan, string> = { ...FALLBACK_PLAN_LABEL };
+      for (const p of plans) {
+        map[p.id] = `${p.name} — ${formatPlanPrice(p.price)}`;
+      }
+      setPlanLabel(map);
+    });
+  }, []);
 
   function save(e: React.FormEvent) {
     e.preventDefault();
@@ -164,6 +189,11 @@ export default function Settings() {
           <label className="label">Email</label>
           <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
+        <div>
+          <label className="label">IP de acceso (sesión activa)</label>
+          <input className="input" value={ipInfo || "Consultando..."} readOnly />
+          <p style={{ fontSize: "0.72rem", color: "var(--muted, #8b8f9b)" }}>IP pública registrada en active_sessions al iniciar sesión</p>
+        </div>
         <button className="btn-primary" disabled={busy}>
           Guardar
         </button>
@@ -172,7 +202,7 @@ export default function Settings() {
 
       <div className="card p-5">
         <h3 className="mb-3 font-semibold text-white">Plan de suscripción</h3>
-        <p className="mb-4 text-sm text-accent">{plan ? PLAN_LABEL[plan] : "—"}</p>
+        <p className="mb-4 text-sm text-accent">{plan ? planLabel[plan] : "—"}</p>
         <div className="flex flex-wrap gap-2">
           {(["basico", "pro", "empresa"] as Plan[]).map((p) => (
             <button
@@ -180,7 +210,7 @@ export default function Settings() {
               className={p === plan ? "btn-primary" : "btn-ghost"}
               onClick={() => changePlan(p)}
             >
-              {PLAN_LABEL[p].split(" — ")[0]}
+              {planLabel[p].split(" — ")[0]}
             </button>
           ))}
         </div>
@@ -216,7 +246,7 @@ export default function Settings() {
                 />
               </div>
               <p className="mt-3 text-xs text-white/40">
-                El pago se acredita a tu suscripción actual{plan ? ` (${PLAN_LABEL[plan].split(" — ")[0]})` : ""}.
+                El pago se acredita a tu suscripción actual{plan ? ` (${planLabel[plan].split(" — ")[0]})` : ""}.
               </p>
             </div>
           )}

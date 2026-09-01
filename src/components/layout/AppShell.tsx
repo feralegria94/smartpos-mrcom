@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { isSubscriptionActive, PLAN_NAMES } from "../../lib/limits";
+import { isPlatformAdmin } from "../../lib/plans";
 import Extras from "../Extras";
 
 const BASE_LINKS = [
@@ -16,6 +17,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { tenant, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [light, setLight] = useState(() => document.documentElement.classList.contains("light"));
+  const [platformAdmin, setPlatformAdmin] = useState(false);
+
+  useEffect(() => {
+    isPlatformAdmin().then(setPlatformAdmin).catch(() => setPlatformAdmin(false));
+  }, []);
 
   // Gestión de usuarios: solo owner y admin.
   const links = useMemo(() => {
@@ -24,8 +30,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
       l.push({ to: "/usuarios", label: "Usuarios", icon: "group" });
       l.push({ to: "/diagnostico", label: "Diagnóstico", icon: "monitor_heart" });
     }
+    if (platformAdmin) {
+      l.push({ to: "/admin", label: "Administración", icon: "admin_panel_settings" });
+    }
     return l;
-  }, [profile?.role]);
+  }, [profile?.role, platformAdmin]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("light", light);

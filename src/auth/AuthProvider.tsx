@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { syncPlanLimits } from "../lib/limits";
 import type { Profile, Tenant } from "../types";
 
 interface AuthState {
@@ -43,6 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    // Límites de planes (public.plans) → caché local para enforcement offline.
+    syncPlanLimits().catch(() => {});
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
       loadProfile(data.session?.user ?? null).finally(() => setLoading(false));

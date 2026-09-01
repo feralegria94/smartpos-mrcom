@@ -52,6 +52,16 @@ export default function Dashboard() {
   );
   // Reloj en vivo (portado de Moon POS)
   const [clock, setClock] = useState<Date>(new Date());
+  // Temporizador de sesión de caja (desde apertura de pantalla)
+  const [openAt] = useState(() => Date.now());
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => {
+      setClock(new Date());
+      setElapsed(Math.floor((Date.now() - openAt) / 1000));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [openAt]);
 
   function loadRecent() {
     setRecent(getSales(tenant?.id ?? ""));
@@ -156,6 +166,7 @@ export default function Dashboard() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-semibold text-white">Nueva venta</h2>
               <span className="text-sm tabular-nums text-white/60">{clock.toLocaleTimeString("es-CL")}</span>
+              <span className="text-xs tabular-nums text-white/40" title="Tiempo de sesión de caja">⏱ {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}</span>
             </div>
             <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/60">
               Plan <span className="font-semibold text-white">{PLAN_NAMES[tenant?.plan ?? "basico"]}</span> —{" "}

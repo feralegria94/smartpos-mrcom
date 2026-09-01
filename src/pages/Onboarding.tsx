@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { setConfig } from "../lib/store";
+import { formatPlanPrice, getPlans, type PlanDef } from "../lib/plans";
 import type { Plan } from "../types";
 
-const PLANS: { id: Plan; name: string; price: string; features: string[] }[] = [
-  { id: "basico", name: "Básico", price: "$14.990/mes", features: ["50 productos", "200 boletas/mes", "2 usuarios"] },
-  { id: "pro", name: "Pro", price: "$29.990/mes", features: ["500 productos", "5.000 boletas/mes", "3 usuarios", "Reportes avanzados"] },
-  { id: "empresa", name: "Empresa", price: "$49.990/mes", features: ["Productos ilimitados", "Boletas ilimitadas", "Usuarios ilimitados", "Multi-sucursal", "Soporte prioritario"] },
-];
+// Features por plan (copy estático de marketing + límites). El precio y nombre
+// vienen de Supabase (public.plans) para poder editarlos desde el dashboard.
+const FEATURES: Record<Plan, string[]> = {
+  basico: ["50 productos", "200 boletas/mes", "2 usuarios"],
+  pro: ["500 productos", "5.000 boletas/mes", "3 usuarios", "Reportes avanzados"],
+  empresa: ["Productos ilimitados", "Boletas ilimitadas", "Usuarios ilimitados", "Multi-sucursal", "Soporte prioritario"],
+};
 
 export default function Onboarding() {
   const { tenant, refresh } = useAuth();
@@ -17,8 +20,13 @@ export default function Onboarding() {
   const [rut, setRut] = useState("");
   const [address, setAddress] = useState("");
   const [plan, setPlan] = useState<Plan>("basico");
+  const [plans, setPlans] = useState<PlanDef[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    getPlans().then(setPlans);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +65,7 @@ export default function Onboarding() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="label">RUT</label>
-              <input className="input" value={rut} onChange={(e) => setRut(e.target.value)} placeholder="76.123.456-7" />
+              <input className="input" value={rut} onChange={(e) => setRut(e.target.value)} placeholder="[RUT_0]" />
             </div>
             <div>
               <label className="label">Dirección</label>
@@ -68,7 +76,7 @@ export default function Onboarding() {
           <div>
             <label className="label">Plan</label>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-              {PLANS.map((p) => (
+              {plans.map((p) => (
                 <button
                   type="button"
                   key={p.id}
@@ -78,9 +86,9 @@ export default function Onboarding() {
                   }`}
                 >
                   <p className="font-semibold text-white">{p.name}</p>
-                  <p className="text-sm text-accent">{p.price}</p>
+                  <p className="text-sm text-accent">{formatPlanPrice(p.price)}</p>
                   <ul className="mt-2 space-y-1 text-xs text-white/50">
-                    {p.features.map((f) => (
+                    {(FEATURES[p.id] ?? []).map((f) => (
                       <li key={f}>• {f}</li>
                     ))}
                   </ul>

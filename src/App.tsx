@@ -12,6 +12,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Users from "./pages/Users";
 import Health from "./pages/Health";
+import AdminPanel from "./pages/AdminPanel";
 
 export default function App() {
   const { user, profile, loading } = useAuth();
@@ -54,6 +55,8 @@ export default function App() {
         <Route path="/reportes" element={<Reports />} />
         <Route path="/ajustes" element={<Settings />} />
         <Route path="/usuarios" element={<Users />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/planes" element={<Navigate to="/admin" replace />} />
         <Route path="/diagnostico" element={<Health />} />
         {/* /login se mantiene accesible con sesión activa para que el guard
             de sesión única en Login.tsx pueda resolver (modal "tomar el control")
