@@ -160,15 +160,15 @@ export default function Dashboard() {
   }
 
   return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <div className="space-y-6 lg:col-span-2">
-          <div className="card p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="card p-5 md:p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-semibold text-white">Nueva venta</h2>
               <span className="text-sm tabular-nums text-white/60">{clock.toLocaleTimeString("es-CL")}</span>
               <span className="text-xs tabular-nums text-white/40" title="Tiempo de sesión de caja">⏱ {String(Math.floor(elapsed / 60)).padStart(2, "0")}:{String(elapsed % 60).padStart(2, "0")}</span>
             </div>
-            <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/60">
+            <div className="mb-5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/60">
               Plan <span className="font-semibold text-white">{PLAN_NAMES[tenant?.plan ?? "basico"]}</span> —{" "}
               {countSalesThisMonth(tenant?.id ?? "")} /{" "}
               {isUnlimited(getPlanLimits(tenant?.plan).maxSalesPerMonth)
@@ -176,7 +176,7 @@ export default function Dashboard() {
                 : getPlanLimits(tenant?.plan).maxSalesPerMonth}{" "}
               boletas este mes
             </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="label">Cliente</label>
               <input
@@ -219,14 +219,42 @@ export default function Dashboard() {
               <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder="0" />
             </div>
             <div className="flex items-end">
-              <button className="btn-primary w-full" onClick={addItem}>
+              <button className="btn-primary w-full py-3" onClick={addItem}>
                 <span className="material-symbols-rounded">add_shopping_cart</span> Agregar
               </button>
             </div>
           </div>
         </div>
 
-        <div className="card p-5">
+        <div className="card p-5 md:p-6">
+          <h3 className="mb-3 font-semibold text-white">Últimas boletas</h3>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {recent.map((s) => (
+              <li key={s.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
+                <div>
+                  <p className="text-sm text-white">{s.customer_name}</p>
+                  <p className="text-xs text-white/40">{new Date(s.created_at).toLocaleString("es-CL")}</p>
+                </div>
+                <span className="flex items-center gap-3">
+                  <span className="text-sm text-accent">{formatCLP(s.total)}</span>
+                  <button
+                    className="text-white/40 hover:text-red-400"
+                    onClick={() => removeSale(s)}
+                    title="Borrar boleta"
+                  >
+                    <span className="material-symbols-rounded align-middle text-base">delete</span>
+                  </button>
+                </span>
+              </li>
+            ))}
+            {!recent.length && (
+              <li className="text-sm text-white/40 sm:col-span-2">Sin ventas aún.</li>
+            )}
+          </ul>
+        </div>
+      </div>
+
+      <div className="card p-5 md:p-6 lg:sticky lg:top-4 lg:self-start">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-semibold text-white">Carrito</h3>
             <span className="text-xl font-bold text-accent">{formatCLP(cartTotal(cart))}</span>
@@ -286,32 +314,6 @@ export default function Dashboard() {
           </button>
           {msg && <p className="mt-2 text-center text-sm text-accent">{msg}</p>}
         </div>
-      </div>
-
-      <div className="card p-5">
-        <h3 className="mb-3 font-semibold text-white">Últimas boletas</h3>
-        <ul className="space-y-2">
-          {recent.map((s) => (
-            <li key={s.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-              <div>
-                <p className="text-sm text-white">{s.customer_name}</p>
-                <p className="text-xs text-white/40">{new Date(s.created_at).toLocaleString("es-CL")}</p>
-              </div>
-              <span className="flex items-center gap-3">
-                <span className="text-sm text-accent">{formatCLP(s.total)}</span>
-                <button
-                  className="text-white/40 hover:text-red-400"
-                  onClick={() => removeSale(s)}
-                  title="Borrar boleta"
-                >
-                  <span className="material-symbols-rounded align-middle text-base">delete</span>
-                </button>
-              </span>
-            </li>
-          ))}
-          {!recent.length && <p className="text-sm text-white/40">Sin ventas aún.</p>}
-        </ul>
-      </div>
     </div>
   );
 }

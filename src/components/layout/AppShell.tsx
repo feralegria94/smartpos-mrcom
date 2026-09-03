@@ -19,22 +19,36 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [light, setLight] = useState(() => document.documentElement.classList.contains("light"));
   const [platformAdmin, setPlatformAdmin] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     isPlatformAdmin().then(setPlatformAdmin).catch(() => setPlatformAdmin(false));
   }, []);
 
   // Gestión de usuarios: solo owner y admin.
-  const links = useMemo(() => {
-    const l = [...BASE_LINKS];
+  // En móvil la barra inferior queda apretada con demasiados items, por eso
+  // separamos: primarios (siempre visibles, máx 4) y secundarios (menú "Más").
+  const { primaryLinks, secondaryLinks, allLinks } = useMemo(() => {
+    const secondary: { to: string; label: string; icon: string }[] = [];
     if (profile?.role === "owner" || profile?.role === "admin") {
-      l.push({ to: "/usuarios", label: "Usuarios", icon: "group" });
-      l.push({ to: "/diagnostico", label: "Diagnóstico", icon: "monitor_heart" });
+      secondary.push({ to: "/usuarios", label: "Usuarios", icon: "group" });
+      secondary.push({ to: "/diagnostico", label: "Diagnóstico", icon: "monitor_heart" });
     }
     if (platformAdmin) {
-      l.push({ to: "/admin", label: "Administración", icon: "admin_panel_settings" });
+      secondary.push({ to: "/admin", label: "Administración", icon: "admin_panel_settings" });
     }
-    return l;
+    // Todos los links del menú lateral (navegación completa).
+    const all = [...BASE_LINKS, ...secondary];
+    // Primarios = los 4 más usados en caja, para no abarrotar la barra móvil.
+    const primary = [
+      BASE_LINKS[0], // Caja
+      BASE_LINKS[1], // Productos
+      BASE_LINKS[2], // Clientes
+      BASE_LINKS[4], // Reportes
+    ];
+    // Secundarios = el resto (incluye Despacho, Ajustes y los de rol).
+    const rest = all.filter((l) => !primary.includes(l));
+    return { primaryLinks: primary, secondaryLinks: rest, allLinks: all };
   }, [profile?.role, platformAdmin]);
 
   useEffect(() => {
@@ -62,7 +76,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
-          {links.map((l) => (
+          {allLinks.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
@@ -82,18 +96,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-4 border-t border-white/5 pt-4 text-xs text-white/40">
           <p>{profile?.full_name || profile?.email}</p>
-          <p className="capitalize">{profile?.role}</p>
-          <div className="mt-3 flex items-center gap-2">
+          <p className="mb-3 capitalize">{profile?.role}</p>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setLight(!light)}
-              className="text-white/60 hover:text-white"
+              className="rounded-lg p-2 text-white/60 transition hover:bg-white/5 hover:text-white"
               title="Cambiar tema"
             >
               <span className="material-symbols-rounded align-middle text-[18px]">
                 {light ? "dark_mode" : "light_mode"}
               </span>
             </button>
-            <button onClick={logout} className="text-white/60 hover:text-white">
+            <button
+              onClick={logout}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-red-300 transition hover:bg-red-500/20 hover:text-red-200"
+            >
+              <span className="material-symbols-rounded align-middle text-[18px]">logout</span>
               Cerrar sesión
             </button>
           </div>
@@ -115,24 +133,88 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* Navegación inferior (móvil/tablet) */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-white/10 bg-ink-soft/95 backdrop-blur md:hidden">
-        {links.map((l) => (
-          <NavLink
-            key={l.to}
-            to={l.to}
-            end={l.to === "/"}
-            className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition ${
-                isActive ? "text-accent" : "text-white/50"
-              }`
-            }
+      {/* Navegación inferior (móvil/tablet): solo primarios + menú "Más". */}
+      <div className="md:hidden">
+        {/* Overlay para cerrar el menú "Más" */}
+        {moreOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={() => setMoreOpen(false)}
+          />
+        )}
+
+        {/* Panel desplegable "Más" */}
+        <div
+          className={`fixed inset-x-0 bottom-16 z-50 rounded-t-2xl border-t border-white/10 bg-ink-soft p-4 transition-transform duration-200 ${
+            moreOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
+          }`}
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-white">Más opciones</p>
+            <button
+              onClick={() => setMoreOpen(false)}
+              className="rounded-lg p-1 text-white/50 hover:text-white"
+              title="Cerrar"
+            >
+              <span className="material-symbols-rounded">close</span>
+            </button>
+          </div>
+          <div className="space-y-1">
+            {secondaryLinks.map((l) => (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                onClick={() => setMoreOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition ${
+                    isActive
+                      ? "bg-moon-600/20 text-white"
+                      : "text-white/70 hover:bg-white/5 hover:text-white"
+                  }`
+                }
+              >
+                <span className="material-symbols-rounded text-[20px]">{l.icon}</span>
+                {l.label}
+              </NavLink>
+            ))}
+            <button
+              onClick={logout}
+              className="mt-2 flex w-full items-center gap-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-3 text-sm text-red-300 transition hover:bg-red-500/20 hover:text-red-200"
+            >
+              <span className="material-symbols-rounded text-[20px]">logout</span>
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+
+        {/* Barra inferior: primarios + botón "Más" */}
+        <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-white/10 bg-ink-soft/95 backdrop-blur">
+          {primaryLinks.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.to === "/"}
+              className={({ isActive }) =>
+                `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition ${
+                  isActive ? "text-accent" : "text-white/50"
+                }`
+              }
+            >
+              <span className="material-symbols-rounded text-[22px]">{l.icon}</span>
+              {l.label}
+            </NavLink>
+          ))}
+          <button
+            onClick={() => setMoreOpen((o) => !o)}
+            className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition ${
+              moreOpen ? "text-accent" : "text-white/50"
+            }`}
           >
-            <span className="material-symbols-rounded text-[22px]">{l.icon}</span>
-            {l.label}
-          </NavLink>
-        ))}
-      </nav>
+            <span className="material-symbols-rounded text-[22px]">more_horiz</span>
+            Más
+          </button>
+        </nav>
+      </div>
     </div>
   );
 }
