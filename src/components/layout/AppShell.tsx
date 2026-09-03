@@ -9,6 +9,7 @@ const BASE_LINKS = [
   { to: "/", label: "Caja", icon: "point_of_sale" },
   { to: "/productos", label: "Productos", icon: "inventory_2" },
   { to: "/clientes", label: "Clientes", icon: "groups" },
+  { to: "/despacho", label: "Despacho", icon: "local_shipping" },
   { to: "/reportes", label: "Reportes", icon: "insights" },
   { to: "/ajustes", label: "Ajustes", icon: "settings" },
 ];

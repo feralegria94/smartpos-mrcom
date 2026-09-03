@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Users from "./pages/Users";
 import Health from "./pages/Health";
 import AdminPanel from "./pages/AdminPanel";
+import Despacho from "./pages/Despacho";
 
 export default function App() {
   const { user, profile, loading } = useAuth();
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/productos" element={<Products />} />
         <Route path="/clientes" element={<Customers />} />
+        <Route path="/despacho" element={<Despacho />} />
         <Route path="/reportes" element={<Reports />} />
         <Route path="/ajustes" element={<Settings />} />
         <Route path="/usuarios" element={<Users />} />

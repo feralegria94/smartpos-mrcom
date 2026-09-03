@@ -15,6 +15,7 @@ export interface LocalProduct {
 export interface LocalCustomer {
   id: string;
   name: string;
+  address?: string;
   created_at: string;
 }
 
@@ -116,9 +117,18 @@ export function setProductActive(tenantId: string, id: string, active: boolean):
 export function getCustomers(tenantId: string): LocalCustomer[] {
   return read(tenantId).customers;
 }
-export function addCustomer(tenantId: string, name: string): LocalCustomer {
+export function addCustomer(
+  tenantId: string,
+  name: string,
+  address?: string
+): LocalCustomer {
   const d = read(tenantId);
-  const c: LocalCustomer = { id: uid(), name, created_at: new Date().toISOString() };
+  const c: LocalCustomer = {
+    id: uid(),
+    name,
+    address: address || undefined,
+    created_at: new Date().toISOString(),
+  };
   d.customers.push(c);
   write(tenantId, d);
   return c;
@@ -166,4 +176,42 @@ export function clearTenantData(tenantId: string): void {
   } catch {
     /* ignore */
   }
+}
+
+// ── Despacho: resumen de clientes con ventas por dirección ──
+
+/** Info resumida de un cliente para la vista de despacho. */
+export interface DeliveryRow {
+  customer: LocalCustomer;
+  /** Total acumulado de ventas de este cliente. */
+  total: number;
+  /** Número de ventas. */
+  saleCount: number;
+}
+
+/**
+ * Devuelve los clientes que tienen al menos una venta, con su total acumulado.
+ * Incluye todos los clientes (con y sin dirección) para el resumen.
+ */
+export function getDeliveryRows(tenantId: string): DeliveryRow[] {
+  const customers = getCustomers(tenantId);
+  const sales = getSales(tenantId);
+
+  // Indexar ventas por customer_id
+  const byCustomer = new Map<string, { total: number; count: number }>();
+  for (const s of sales) {
+    if (!s.customer_id) continue;
+    const prev = byCustomer.get(s.customer_id) ?? { total: 0, count: 0 };
+    prev.total += s.total;
+    prev.count += 1;
+    byCustomer.set(s.customer_id, prev);
+  }
+
+  return customers
+    .filter((c) => byCustomer.has(c.id))
+    .map((c) => {
+      const agg = byCustomer.get(c.id)!;
+      return { customer: c, total: agg.total, saleCount: agg.count };
+    })
+    .sort((a, b) => b.total - a.total);
 }

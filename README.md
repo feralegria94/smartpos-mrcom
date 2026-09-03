@@ -72,6 +72,7 @@ Para migraciones incrementales (puerto 5432 bloqueado por firewall):
 | ✅ F6a | Roles staff (owner/admin/cajero), invitaciones, revocar acceso |
 | ⏳ F4 | Pasarela de pago recurrente (Transbank/Stripe) — QR Mercado Pago ya activo |
 | ⏳ F5 | Deploy Netlify + subdominio `smartpos.mrcomsoluciones.cl` (Cloudflare) |
+| ✅ F7 | Ruta de despacho: dirección por cliente, vista `/despacho` con Maps, Crear ruta (waypoints) y Copiar direcciones (portado de Moon POS) |
 
 ## Git: commit + push (workflow rápido)
 
