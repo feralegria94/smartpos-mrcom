@@ -2,6 +2,8 @@
 
 Punto de venta multi-tenant en la nube, desarrollado por MR.COM Soluciones.
 
+**Demo:** https://chiloesmart-mrcom.netlify.app/
+
 - **Stack:** Vite + React + TypeScript + Tailwind CSS
 - **Backend:** Supabase (Auth + Postgres + Row Level Security multi-tenant)
 - **Modelo:** Suscripción fija (planes `basico` / `pro` / `empresa`)
